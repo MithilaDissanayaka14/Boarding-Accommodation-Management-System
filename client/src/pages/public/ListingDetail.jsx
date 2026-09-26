@@ -21,6 +21,11 @@ import {
   UserCheck,
   Share2,
   Heart,
+  Navigation,
+  Compass,
+  ExternalLink,
+  Copy,
+  CheckCheck,
 } from 'lucide-react';
 
 export const ListingDetail = () => {
@@ -30,6 +35,14 @@ export const ListingDetail = () => {
   const queryClient = useQueryClient();
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [copiedLocationLink, setCopiedLocationLink] = useState(false);
+
+  const handleCopyMapLink = (url) => {
+    if (!url) return;
+    navigator.clipboard.writeText(url);
+    setCopiedLocationLink(true);
+    setTimeout(() => setCopiedLocationLink(false), 2500);
+  };
 
   // Booking Modal State
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
@@ -128,6 +141,16 @@ export const ListingDetail = () => {
     images = [images[0], images[1], secondaryImage2];
   }
 
+  // Location Coordinates & Navigation URLs
+  const hasCoordinates = listing.latitude != null && listing.longitude != null;
+  const lat = hasCoordinates ? Number(listing.latitude) : 6.9148;
+  const lng = hasCoordinates ? Number(listing.longitude) : 79.9733;
+  const googleDirectionsUrl =
+    listing.googleMapsUrl ||
+    `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  const walkingDirectionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
+  const drivingDirectionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+
   const handleBookingSubmit = (e) => {
     e.preventDefault();
     if (!moveInDate) {
@@ -216,13 +239,34 @@ export const ListingDetail = () => {
 
           <span style={{ color: '#E6E8EC' }}>•</span>
 
-          {/* Location Pin */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)' }}>
-            <MapPin size={15} color="var(--primary)" />
-            <span style={{ fontWeight: 600 }}>{listing.address}, {listing.city}</span>
-            <span style={{ color: 'var(--primary)', fontWeight: 700, marginLeft: '0.25rem' }}>
-              ({listing.nearestUniversity} • {listing.distanceToCampus})
-            </span>
+          {/* Location Pin & Quick Directions Link */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap', color: 'var(--text-secondary)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <MapPin size={15} color="var(--primary)" />
+              <span style={{ fontWeight: 600 }}>{listing.address}, {listing.city}</span>
+              <span style={{ color: 'var(--primary)', fontWeight: 700, marginLeft: '0.25rem' }}>
+                ({listing.nearestUniversity} • {listing.distanceToCampus})
+              </span>
+            </div>
+            <a
+              href="#location-map"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                color: 'var(--primary)',
+                backgroundColor: '#EEF4FF',
+                padding: '0.2rem 0.65rem',
+                borderRadius: 'var(--radius-full)',
+                textDecoration: 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <Navigation size={12} />
+              <span>Map & Directions</span>
+            </a>
           </div>
         </div>
       </div>
@@ -533,6 +577,259 @@ export const ListingDetail = () => {
                     <span style={{ fontWeight: 600 }}>{fac}</span>
                   </div>
                 ))}
+            </div>
+          </div>
+
+          {/* 
+            ========================================================================
+            LOCATION & INTERACTIVE TURN-BY-TURN DIRECTIONS
+            ========================================================================
+          */}
+          <div
+            id="location-map"
+            className="card"
+            style={{
+              padding: '2rem',
+              borderRadius: '24px',
+              border: '1px solid #E6E8EC',
+              marginBottom: '2rem',
+              backgroundColor: '#FFFFFF',
+            }}
+          >
+            {/* Header with Title and Address */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '1rem',
+                marginBottom: '1.25rem',
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '10px',
+                      backgroundColor: '#EEF4FF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'var(--primary)',
+                    }}
+                  >
+                    <MapPin size={20} />
+                  </div>
+                  <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                    Location & Turn-by-Turn Directions
+                  </h3>
+                </div>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', margin: 0, paddingLeft: '3.1rem' }}>
+                  {listing.address}, {listing.city}
+                </p>
+              </div>
+
+              {/* Campus Proximity badge */}
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#F0FDF4',
+                  border: '1px solid #BBF7D0',
+                  color: '#15803D',
+                  borderRadius: 'var(--radius-full)',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                }}
+              >
+                <Compass size={16} />
+                <span>
+                  {listing.distanceToCampus || '5 mins walk'} to {listing.nearestUniversity}
+                </span>
+              </div>
+            </div>
+
+            {/* Interactive Embedded OpenStreetMap */}
+            <div
+              style={{
+                position: 'relative',
+                width: '100%',
+                height: '340px',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                border: '1px solid #E2E8F0',
+                backgroundColor: '#F1F5F9',
+                marginBottom: '1.25rem',
+              }}
+            >
+              <iframe
+                title={`Map of ${listing.title}`}
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                scrolling="no"
+                marginHeight="0"
+                marginWidth="0"
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.008}%2C${lat - 0.005}%2C${lng + 0.008}%2C${lat + 0.005}&layer=mapnik&marker=${lat}%2C${lng}`}
+              />
+
+              {/* Floating Pin Label on Map */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '12px',
+                  left: '12px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                  backdropFilter: 'blur(8px)',
+                  padding: '0.4rem 0.85rem',
+                  borderRadius: '10px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  border: '1px solid rgba(226, 232, 240, 0.8)',
+                }}
+              >
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#EF4444' }} />
+                <span>{listing.title}</span>
+              </div>
+            </div>
+
+            {/* Navigation Action Buttons Console */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '0.75rem',
+                paddingTop: '0.25rem',
+              }}
+            >
+              {/* Primary Google Maps Navigation Button */}
+              <a
+                href={googleDirectionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  backgroundColor: '#3B71FE',
+                  fontWeight: 700,
+                  fontSize: '0.925rem',
+                  padding: '0.75rem 1.4rem',
+                  borderRadius: '14px',
+                  boxShadow: '0 4px 14px rgba(59, 113, 254, 0.25)',
+                }}
+              >
+                <Navigation size={18} />
+                Get Directions in Google Maps
+                <ExternalLink size={14} style={{ opacity: 0.85 }} />
+              </a>
+
+              {/* Walking Route Mode */}
+              <a
+                href={walkingDirectionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.75rem 1.1rem',
+                  borderRadius: '14px',
+                  border: '1px solid #E2E8F0',
+                  backgroundColor: '#F8FAFC',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#EFF6FF';
+                  e.currentTarget.style.borderColor = '#BFDBFE';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                  e.currentTarget.style.borderColor = '#E2E8F0';
+                }}
+              >
+                🚶 Walking Route
+              </a>
+
+              {/* Driving Route Mode */}
+              <a
+                href={drivingDirectionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.75rem 1.1rem',
+                  borderRadius: '14px',
+                  border: '1px solid #E2E8F0',
+                  backgroundColor: '#F8FAFC',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#EFF6FF';
+                  e.currentTarget.style.borderColor = '#BFDBFE';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#F8FAFC';
+                  e.currentTarget.style.borderColor = '#E2E8F0';
+                }}
+              >
+                🚗 Driving Route
+              </a>
+
+              {/* Copy Direct Route Link */}
+              <button
+                type="button"
+                onClick={() => handleCopyMapLink(googleDirectionsUrl)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.75rem 1.1rem',
+                  borderRadius: '14px',
+                  border: '1px solid #E2E8F0',
+                  backgroundColor: '#FFFFFF',
+                  color: copiedLocationLink ? '#15803D' : 'var(--text-secondary)',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  marginLeft: 'auto',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {copiedLocationLink ? (
+                  <>
+                    <CheckCheck size={16} color="#15803D" />
+                    <span>Link Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={16} />
+                    <span>Copy Route Link</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
 
@@ -861,6 +1158,39 @@ export const ListingDetail = () => {
 
             <div style={{ textAlign: 'center', marginTop: '0.9rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               🔒 No upfront payment required to inquire
+            </div>
+
+            {/* Quick Directions Link in Booking Console */}
+            <div
+              style={{
+                marginTop: '1.25rem',
+                paddingTop: '1rem',
+                borderTop: '1px solid #E6E8EC',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-secondary)', fontSize: '0.825rem' }}>
+                <MapPin size={14} color="var(--primary)" />
+                <span style={{ fontWeight: 600 }}>{listing.city}</span>
+              </div>
+              <a
+                href={googleDirectionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: 'var(--primary)',
+                  textDecoration: 'none',
+                }}
+              >
+                Get Directions <ExternalLink size={12} />
+              </a>
             </div>
           </div>
         </div>

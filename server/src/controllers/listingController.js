@@ -172,10 +172,20 @@ const createListing = asyncHandler(async (req, res, next) => {
   const totalBeds = Number(req.body.totalBeds) || 1;
   const availableBeds = req.body.availableBeds !== undefined ? Number(req.body.availableBeds) : totalBeds;
 
+  const latitude = req.body.latitude ? Number(req.body.latitude) : null;
+  const longitude = req.body.longitude ? Number(req.body.longitude) : null;
+  let googleMapsUrl = req.body.googleMapsUrl ? req.body.googleMapsUrl.trim() : null;
+  if (!googleMapsUrl && latitude && longitude) {
+    googleMapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+  }
+
   // Create listing document with strictly server-assigned ownerId
   const newListing = await Listing.create({
     ...req.body,
     ownerId: req.user._id,
+    latitude,
+    longitude,
+    googleMapsUrl,
     facilities: facilities || [],
     houseRules: houseRules || [],
     images: imageUrls,

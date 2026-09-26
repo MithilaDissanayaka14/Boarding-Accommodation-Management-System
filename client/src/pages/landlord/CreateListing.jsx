@@ -13,6 +13,11 @@ import {
   Check,
   FileText,
   Images,
+  Navigation,
+  Compass,
+  ExternalLink,
+  LocateFixed,
+  CheckCircle2,
 } from 'lucide-react';
 
 const UNIVERSITIES = [
@@ -24,6 +29,15 @@ const UNIVERSITIES = [
   'USJ',
   'CINEC',
   'Horizon',
+];
+
+const CAMPUS_PRESETS = [
+  { name: 'SLIIT Malabe', city: 'Malabe', uni: 'SLIIT', lat: 6.9148, lng: 79.9733, distance: '400m (5 mins walk)' },
+  { name: 'NSBM Homagama', city: 'Homagama', uni: 'NSBM', lat: 6.8213, lng: 80.0416, distance: '600m (7 mins walk)' },
+  { name: 'UoM Katubedda', city: 'Katubedda', uni: 'UoM', lat: 6.7969, lng: 79.9018, distance: '500m (6 mins walk)' },
+  { name: 'UoC Colombo 07', city: 'Colombo 07', uni: 'UoC', lat: 6.9000, lng: 79.8588, distance: '800m (10 mins walk)' },
+  { name: 'UoK Kelaniya', city: 'Kelaniya', uni: 'UoK', lat: 6.9744, lng: 79.9161, distance: '700m (8 mins walk)' },
+  { name: 'CINEC Campus', city: 'Malabe', uni: 'CINEC', lat: 6.9135, lng: 79.9708, distance: '350m (4 mins walk)' },
 ];
 
 const AVAILABLE_FACILITIES = [
@@ -50,6 +64,11 @@ export const CreateListing = () => {
   const [city, setCity] = useState('Malabe');
   const [nearestUniversity, setNearestUniversity] = useState('SLIIT');
   const [distanceToCampus, setDistanceToCampus] = useState('500m (5 mins walk)');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [googleMapsUrl, setGoogleMapsUrl] = useState('');
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationNotice, setLocationNotice] = useState('');
   const [rentAmount, setRentAmount] = useState('');
   const [keyMoney, setKeyMoney] = useState('');
   const [roomType, setRoomType] = useState('shared');
@@ -80,6 +99,41 @@ export const CreateListing = () => {
     );
   };
 
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by your browser.');
+      return;
+    }
+    setIsLocating(true);
+    setLocationNotice('');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lng = Number(pos.coords.longitude.toFixed(6));
+        setLatitude(lat);
+        setLongitude(lng);
+        setGoogleMapsUrl(`https://www.google.com/maps?q=${lat},${lng}`);
+        setIsLocating(false);
+        setLocationNotice(`Exact GPS coordinates detected (${lat}, ${lng})!`);
+      },
+      (err) => {
+        setIsLocating(false);
+        setError('Could not detect device location. Please check browser permissions or select a campus preset.');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const handleApplyPreset = (preset) => {
+    setLatitude(preset.lat);
+    setLongitude(preset.lng);
+    setCity(preset.city);
+    setNearestUniversity(preset.uni);
+    setDistanceToCampus(preset.distance);
+    setGoogleMapsUrl(`https://www.google.com/maps?q=${preset.lat},${preset.lng}`);
+    setLocationNotice(`Set location coordinates near ${preset.name}`);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
@@ -91,6 +145,9 @@ export const CreateListing = () => {
     formData.append('city', city);
     formData.append('nearestUniversity', nearestUniversity);
     formData.append('distanceToCampus', distanceToCampus);
+    if (latitude) formData.append('latitude', latitude);
+    if (longitude) formData.append('longitude', longitude);
+    if (googleMapsUrl) formData.append('googleMapsUrl', googleMapsUrl);
     formData.append('rentAmount', Number(rentAmount));
     formData.append('keyMoney', Number(keyMoney || 0));
     formData.append('roomType', roomType);
@@ -252,6 +309,208 @@ export const CreateListing = () => {
                   onChange={(e) => setAddress(e.target.value)}
                   required
                 />
+              </div>
+
+              {/* Boarding House GPS Pin & Directions Console */}
+              <div
+                style={{
+                  padding: '1.25rem',
+                  borderRadius: '16px',
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Navigation size={18} color="var(--primary)" />
+                    <div>
+                      <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                        House GPS Coordinates & Direct Navigation
+                      </h3>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
+                        Provide exact coordinates so students can tap <strong>"Get Directions"</strong> to navigate directly to your boarding place.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleUseCurrentLocation}
+                    disabled={isLocating}
+                    className="btn btn-secondary btn-sm"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      fontWeight: 600,
+                      fontSize: '0.8rem',
+                      backgroundColor: '#FFFFFF',
+                    }}
+                  >
+                    <LocateFixed size={14} color="var(--primary)" />
+                    {isLocating ? 'Detecting Location...' : 'Use My Current Location'}
+                  </button>
+                </div>
+
+                {/* Quick campus preset chips */}
+                <div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                    Or select a nearest campus preset to autofill coordinates:
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    {CAMPUS_PRESETS.map((preset) => (
+                      <button
+                        key={preset.name}
+                        type="button"
+                        onClick={() => handleApplyPreset(preset)}
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          padding: '0.3rem 0.65rem',
+                          borderRadius: 'var(--radius-full)',
+                          border: '1px solid #CBD5E1',
+                          backgroundColor: '#FFFFFF',
+                          color: 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--primary)';
+                          e.currentTarget.style.color = 'var(--primary)';
+                          e.currentTarget.style.backgroundColor = '#EFF6FF';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = '#CBD5E1';
+                          e.currentTarget.style.color = 'var(--text-secondary)';
+                          e.currentTarget.style.backgroundColor = '#FFFFFF';
+                        }}
+                      >
+                        📍 {preset.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {locationNotice && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      padding: '0.5rem 0.75rem',
+                      backgroundColor: 'var(--status-success-bg)',
+                      color: 'var(--status-success-text)',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                    }}
+                  >
+                    <CheckCircle2 size={14} />
+                    <span>{locationNotice}</span>
+                  </div>
+                )}
+
+                {/* Coordinate Inputs */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.85rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.8rem' }}>Latitude (e.g. 6.9148)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      className="form-input"
+                      placeholder="e.g. 6.9148"
+                      value={latitude}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setLatitude(val);
+                        if (val && longitude) {
+                          setGoogleMapsUrl(`https://www.google.com/maps?q=${val},${longitude}`);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.8rem' }}>Longitude (e.g. 79.9733)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      className="form-input"
+                      placeholder="e.g. 79.9733"
+                      value={longitude}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setLongitude(val);
+                        if (latitude && val) {
+                          setGoogleMapsUrl(`https://www.google.com/maps?q=${latitude},${val}`);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0, gridColumn: 'span 2' }}>
+                    <label className="form-label" style={{ fontSize: '0.8rem' }}>
+                      Google Maps Direct / Share URL (Optional)
+                    </label>
+                    <input
+                      type="url"
+                      className="form-input"
+                      placeholder="https://maps.google.com/?q=..."
+                      value={googleMapsUrl}
+                      onChange={(e) => setGoogleMapsUrl(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Live Interactive Map Pin Preview */}
+                {latitude && longitude && (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                        🗺️ Live OpenStreetMap Pin Preview:
+                      </span>
+                      <a
+                        href={googleMapsUrl || `https://www.google.com/maps?q=${latitude},${longitude}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          color: 'var(--primary)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                        }}
+                      >
+                        Preview Navigation <ExternalLink size={12} />
+                      </a>
+                    </div>
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '180px',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        border: '1px solid #CBD5E1',
+                        backgroundColor: '#E2E8F0',
+                      }}
+                    >
+                      <iframe
+                        title="Listing Location Preview"
+                        width="100%"
+                        height="100%"
+                        frameBorder="0"
+                        scrolling="no"
+                        marginHeight="0"
+                        marginWidth="0"
+                        src={`https://www.openstreetmap.org/export/embed.html?bbox=${Number(longitude) - 0.006}%2C${Number(latitude) - 0.004}%2C${Number(longitude) + 0.006}%2C${Number(latitude) + 0.004}&layer=mapnik&marker=${latitude}%2C${longitude}`}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="form-group" style={{ marginBottom: 0 }}>

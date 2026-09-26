@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, MapPin, Bed, ChevronLeft, ChevronRight, UserCheck, Sparkles } from 'lucide-react';
+import { Star, MapPin, Bed, ChevronLeft, ChevronRight, UserCheck, Sparkles, Navigation } from 'lucide-react';
 
 export const ListingCard = ({ listing }) => {
   if (!listing) return null;
@@ -256,11 +256,12 @@ export const ListingCard = ({ listing }) => {
 
       {/* Card Content Body */}
       <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
-        {/* Proximity / University Header */}
+        {/* Proximity / University Header & Quick Map Link */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'space-between',
             gap: '0.35rem',
             color: 'var(--primary)',
             fontSize: '0.775rem',
@@ -270,10 +271,49 @@ export const ListingCard = ({ listing }) => {
             marginBottom: '0.4rem',
           }}
         >
-          <MapPin size={13} strokeWidth={2.5} />
-          <span>
-            {listing.nearestUniversity} • {listing.distanceToCampus || listing.city}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <MapPin size={13} strokeWidth={2.5} style={{ flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {listing.nearestUniversity} • {listing.distanceToCampus || listing.city}
+            </span>
+          </div>
+
+          {(listing.googleMapsUrl || (listing.latitude && listing.longitude)) && (
+            <a
+              href={
+                listing.googleMapsUrl ||
+                `https://www.google.com/maps/dir/?api=1&destination=${listing.latitude},${listing.longitude}`
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              title="Get Directions in Google Maps"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.2rem',
+                fontSize: '0.7rem',
+                color: 'var(--text-muted)',
+                textTransform: 'none',
+                padding: '0.15rem 0.45rem',
+                borderRadius: '6px',
+                backgroundColor: '#F1F5F9',
+                transition: 'all 0.15s ease',
+                flexShrink: 0,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--primary)';
+                e.currentTarget.style.backgroundColor = '#EEF4FF';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--text-muted)';
+                e.currentTarget.style.backgroundColor = '#F1F5F9';
+              }}
+            >
+              <Navigation size={10} />
+              <span>Map</span>
+            </a>
+          )}
         </div>
 
         {/* Title */}

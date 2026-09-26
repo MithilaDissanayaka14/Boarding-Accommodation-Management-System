@@ -42,6 +42,19 @@ const listingSchema = new mongoose.Schema(
       default: 'Within 1 km',
       trim: true,
     },
+    latitude: {
+      type: Number,
+      default: null,
+    },
+    longitude: {
+      type: Number,
+      default: null,
+    },
+    googleMapsUrl: {
+      type: String,
+      default: null,
+      trim: true,
+    },
     rentAmount: {
       type: Number,
       required: [true, 'Please specify the monthly rent amount in LKR'],
