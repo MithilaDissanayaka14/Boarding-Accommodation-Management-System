@@ -64,12 +64,12 @@ export const Login = () => {
               width: '44px',
               height: '44px',
               borderRadius: 'var(--radius-md)',
-              background: 'linear-gradient(135deg, #0F766E 0%, #0D9488 100%)',
+              background: 'linear-gradient(135deg, #3B71FE 0%, #2563EB 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto 1rem',
-              boxShadow: '0 2px 8px rgba(15, 118, 110, 0.25)',
+              boxShadow: '0 4px 14px rgba(59, 113, 254, 0.3)',
             }}
           >
             <Home size={22} color="#FFFFFF" strokeWidth={2.2} />

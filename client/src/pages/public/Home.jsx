@@ -77,9 +77,9 @@ export const Home = () => {
               borderRadius: 'clamp(18px, 2.5vw, 32px)',
               overflow: 'hidden',
               boxShadow: '0 25px 50px -15px rgba(15, 23, 42, 0.2)',
-              backgroundImage: `url('https://images.unsplash.com/photo-1582719508461-905c673771fd?w=1920&auto=format&fit=crop&q=85')`,
+              backgroundImage: `url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1920&auto=format&fit=crop&q=85')`,
               backgroundSize: 'cover',
-              backgroundPosition: 'center 45%',
+              backgroundPosition: 'center 50%',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'flex-start',
@@ -148,9 +148,13 @@ export const Home = () => {
               maxWidth: '1220px',
               position: 'relative',
               zIndex: 10,
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'rgba(255, 255, 255, 0.78)',
+              backdropFilter: 'blur(24px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(24px) saturate(180%)',
               borderRadius: '24px',
-              boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.16), 0 0 0 1px rgba(226, 232, 240, 0.9)',
+              border: '1px solid rgba(255, 255, 255, 0.85)',
+              boxShadow:
+                '0 30px 60px -15px rgba(15, 23, 42, 0.16), 0 0 0 1px rgba(255, 255, 255, 0.7), inset 0 1px 2px rgba(255, 255, 255, 0.95)',
             }}
           >
             {/* Console Top Row: Room Types Tabs & Filter Pills */}
@@ -204,14 +208,17 @@ export const Home = () => {
                     style={{
                       width: '100%',
                       appearance: 'none',
-                      backgroundColor: '#F4F5F6',
-                      border: '1px solid #E6E8EC',
+                      backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(226, 232, 240, 0.8)',
                       borderRadius: 'var(--radius-full)',
                       padding: '0.45rem 2rem 0.45rem 1rem',
                       fontSize: '0.825rem',
                       fontWeight: 600,
                       color: 'var(--text-secondary)',
                       cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)',
                     }}
                   >
                     <option value="all">Gender: Any</option>
@@ -233,14 +240,17 @@ export const Home = () => {
                     style={{
                       width: '100%',
                       appearance: 'none',
-                      backgroundColor: '#F4F5F6',
-                      border: '1px solid #E6E8EC',
+                      backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(226, 232, 240, 0.8)',
                       borderRadius: 'var(--radius-full)',
                       padding: '0.45rem 2rem 0.45rem 1rem',
                       fontSize: '0.825rem',
                       fontWeight: 600,
                       color: 'var(--text-secondary)',
                       cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.03)',
                     }}
                   >
                     <option value="1">1 Student</option>
@@ -752,11 +762,24 @@ export const Home = () => {
           cursor: pointer;
         }
 
+        .hero-floating-console {
+          margin: -90px auto 0;
+          width: calc(100% - clamp(1rem, 4vw, 4rem));
+          padding: 1.5rem 2rem 1.75rem;
+          background: rgba(255, 255, 255, 0.78) !important;
+          backdrop-filter: blur(24px) saturate(180%) !important;
+          -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+          border: 1px solid rgba(255, 255, 255, 0.85) !important;
+          box-shadow: 0 30px 60px -15px rgba(15, 23, 42, 0.16), 0 0 0 1px rgba(255, 255, 255, 0.7), inset 0 1px 2px rgba(255, 255, 255, 0.95) !important;
+        }
+
         .tab-btn-active {
           font-weight: 700 !important;
           color: var(--primary) !important;
-          background-color: var(--primary-subtle) !important;
-          border: 1px solid var(--primary-border) !important;
+          background-color: rgba(59, 113, 254, 0.12) !important;
+          border: 1px solid rgba(59, 113, 254, 0.28) !important;
+          backdrop-filter: blur(8px) !important;
+          box-shadow: 0 2px 8px rgba(59, 113, 254, 0.12) !important;
         }
 
         .search-wells-grid {
@@ -773,6 +796,19 @@ export const Home = () => {
           justify-content: center;
           padding: 0.85rem 1.25rem;
           min-height: 64px;
+          background: rgba(244, 245, 246, 0.72) !important;
+          backdrop-filter: blur(12px) !important;
+          -webkit-backdrop-filter: blur(12px) !important;
+          border: 1px solid rgba(255, 255, 255, 0.8) !important;
+          border-radius: 16px;
+          box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+          transition: all var(--transition-fast);
+        }
+
+        .search-field-well:hover, .search-field-well:focus-within {
+          background: rgba(255, 255, 255, 0.94) !important;
+          border-color: rgba(59, 113, 254, 0.35) !important;
+          box-shadow: 0 4px 16px rgba(59, 113, 254, 0.1), inset 0 1px 1px #FFFFFF !important;
         }
 
         .well-label {

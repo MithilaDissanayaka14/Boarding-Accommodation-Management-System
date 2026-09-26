@@ -148,14 +148,14 @@ export const StudentDashboard = () => {
               width: '56px',
               height: '56px',
               borderRadius: 'var(--radius-lg)',
-              background: 'linear-gradient(135deg, #0F766E 0%, #0D9488 100%)',
+              background: 'linear-gradient(135deg, #3B71FE 0%, #2563EB 100%)',
               color: '#FFFFFF',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: '1.6rem',
               fontWeight: 800,
-              boxShadow: '0 4px 12px rgba(15, 118, 110, 0.25)',
+              boxShadow: '0 4px 14px rgba(59, 113, 254, 0.3)',
             }}
           >
             {user?.name?.charAt(0) || 'S'}

@@ -39,7 +39,7 @@ export const Navbar = () => {
       }}
     >
       <div
-        className="container"
+        className="container-hero"
         style={{
           display: 'flex',
           alignItems: 'center',
