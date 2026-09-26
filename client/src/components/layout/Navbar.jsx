@@ -189,15 +189,30 @@ export const Navbar = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           {isAuthenticated ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div
+              <Link
+                to="/profile"
+                title="View & Edit My Profile"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.65rem',
                   padding: '0.3rem 0.75rem',
-                  backgroundColor: 'var(--bg-subtle)',
+                  backgroundColor: location.pathname === '/profile' ? 'var(--primary-subtle)' : 'var(--bg-subtle)',
                   borderRadius: 'var(--radius-full)',
-                  border: '1px solid var(--border-hairline)',
+                  border: `1px solid ${location.pathname === '/profile' ? 'var(--primary)' : 'var(--border-hairline)'}`,
+                  textDecoration: 'none',
+                  transition: 'all var(--transition-fast)',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--primary)';
+                  e.currentTarget.style.backgroundColor = 'var(--primary-subtle)';
+                }}
+                onMouseLeave={(e) => {
+                  if (location.pathname !== '/profile') {
+                    e.currentTarget.style.borderColor = 'var(--border-hairline)';
+                    e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
+                  }
                 }}
               >
                 {user.avatar ? (
@@ -237,7 +252,7 @@ export const Navbar = () => {
                     {user.role}
                   </div>
                 </div>
-              </div>
+              </Link>
 
               <button
                 onClick={handleLogout}
@@ -359,6 +374,27 @@ export const Navbar = () => {
                 Post Listing
               </Link>
             </>
+          )}
+
+          {isAuthenticated && (
+            <Link
+              to="/profile"
+              onClick={() => setMobileMenuOpen(false)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.6rem 0',
+                fontWeight: 600,
+                color: 'var(--text-primary)',
+                borderTop: '1px solid var(--border-hairline)',
+                marginTop: '0.25rem',
+                paddingTop: '0.75rem',
+              }}
+            >
+              <User size={18} color="var(--primary)" />
+              My Profile & Settings
+            </Link>
           )}
         </div>
       )}

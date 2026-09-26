@@ -8,6 +8,7 @@ const {
   setAuthCookies,
   clearAuthCookies,
 } = require('../utils/tokens');
+const { processUploadedFile } = require('../middlewares/uploadMiddleware');
 
 /**
  * Register a new student or landlord
@@ -181,6 +182,9 @@ const getMe = asyncHandler(async (req, res) => {
         phone: req.user.phone,
         university: req.user.university,
         avatar: req.user.avatar,
+        bio: req.user.bio || '',
+        address: req.user.address || '',
+        emergencyContact: req.user.emergencyContact || '',
         isVerified: req.user.isVerified,
         createdAt: req.user.createdAt,
       },
@@ -193,16 +197,20 @@ const getMe = asyncHandler(async (req, res) => {
  * PATCH /api/v1/auth/profile
  */
 const updateProfile = asyncHandler(async (req, res, next) => {
-  const { name, phone, university, avatar } = req.body;
+  const { name, phone, university, avatar, bio, address, emergencyContact } = req.body;
+
+  const updateFields = {};
+  if (name !== undefined) updateFields.name = name;
+  if (phone !== undefined) updateFields.phone = phone;
+  if (university !== undefined) updateFields.university = university;
+  if (avatar !== undefined) updateFields.avatar = avatar;
+  if (bio !== undefined) updateFields.bio = bio;
+  if (address !== undefined) updateFields.address = address;
+  if (emergencyContact !== undefined) updateFields.emergencyContact = emergencyContact;
 
   const updatedUser = await User.findByIdAndUpdate(
     req.user._id,
-    {
-      ...(name && { name }),
-      ...(phone && { phone }),
-      ...(university !== undefined && { university }),
-      ...(avatar && { avatar }),
-    },
+    updateFields,
     { new: true, runValidators: true }
   );
 
@@ -210,7 +218,81 @@ const updateProfile = asyncHandler(async (req, res, next) => {
     status: 'success',
     message: 'Profile updated successfully',
     data: {
-      user: updatedUser,
+      user: {
+        id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        phone: updatedUser.phone,
+        university: updatedUser.university,
+        avatar: updatedUser.avatar,
+        bio: updatedUser.bio || '',
+        address: updatedUser.address || '',
+        emergencyContact: updatedUser.emergencyContact || '',
+        isVerified: updatedUser.isVerified,
+        createdAt: updatedUser.createdAt,
+      },
+    },
+  });
+});
+
+/**
+ * Update user password
+ * PATCH /api/v1/auth/update-password
+ */
+const updatePassword = asyncHandler(async (req, res, next) => {
+  const { currentPassword, newPassword } = req.body;
+
+  const user = await User.findById(req.user._id).select('+password');
+  if (!user || !(await user.comparePassword(currentPassword))) {
+    return next(new AppError('Current password is incorrect', 400));
+  }
+
+  user.password = newPassword;
+  user.passwordChangedAt = Date.now();
+  await user.save();
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Password changed successfully',
+  });
+});
+
+/**
+ * Upload profile avatar image file
+ * PATCH /api/v1/auth/avatar
+ */
+const uploadAvatar = asyncHandler(async (req, res, next) => {
+  if (!req.file) {
+    return next(new AppError('Please select a photo to upload', 400));
+  }
+
+  const avatarUrl = await processUploadedFile(req.file, 'avatars');
+
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user._id,
+    { avatar: avatarUrl },
+    { new: true, runValidators: true }
+  );
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Profile photo uploaded successfully',
+    data: {
+      user: {
+        id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        phone: updatedUser.phone,
+        university: updatedUser.university,
+        avatar: updatedUser.avatar,
+        bio: updatedUser.bio || '',
+        address: updatedUser.address || '',
+        emergencyContact: updatedUser.emergencyContact || '',
+        isVerified: updatedUser.isVerified,
+        createdAt: updatedUser.createdAt,
+      },
     },
   });
 });
@@ -222,4 +304,6 @@ module.exports = {
   logout,
   getMe,
   updateProfile,
+  updatePassword,
+  uploadAvatar,
 };

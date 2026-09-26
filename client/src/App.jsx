@@ -27,6 +27,9 @@ const LandlordDashboard = lazy(() =>
 const CreateListing = lazy(() =>
   import('./pages/landlord/CreateListing').then((m) => ({ default: m.CreateListing }))
 );
+const Profile = lazy(() =>
+  import('./pages/common/Profile').then((m) => ({ default: m.Profile }))
+);
 
 // Configure TanStack Query Client
 const queryClient = new QueryClient({
@@ -118,6 +121,16 @@ export function App() {
                     element={
                       <ProtectedRoute allowedRoles={['landlord', 'admin']}>
                         <CreateListing />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* Authenticated User Profile & Settings */}
+                  <Route
+                    path="/profile"
+                    element={
+                      <ProtectedRoute allowedRoles={['student', 'landlord', 'admin']}>
+                        <Profile />
                       </ProtectedRoute>
                     }
                   />

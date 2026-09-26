@@ -23,6 +23,7 @@ import {
   Clock,
   AlertCircle,
   ExternalLink,
+  User,
 } from 'lucide-react';
 
 export const LandlordDashboard = () => {
@@ -234,9 +235,19 @@ export const LandlordDashboard = () => {
           </div>
         </div>
 
-        <Link to="/landlord/create-listing" className="btn btn-primary btn-sm" style={{ fontWeight: 700 }}>
-          <Plus size={16} strokeWidth={2.5} /> Post New Listing
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <Link
+            to="/profile"
+            className="btn btn-secondary btn-sm"
+            style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+          >
+            <User size={15} />
+            Edit Profile
+          </Link>
+          <Link to="/landlord/create-listing" className="btn btn-primary btn-sm" style={{ fontWeight: 700 }}>
+            <Plus size={16} strokeWidth={2.5} /> Post New Listing
+          </Link>
+        </div>
       </div>
 
       {/* Top Metric Cards */}

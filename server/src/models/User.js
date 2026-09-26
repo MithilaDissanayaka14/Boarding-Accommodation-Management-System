@@ -49,6 +49,24 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    bio: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: [500, 'Bio cannot exceed 500 characters'],
+    },
+    address: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: [250, 'Address cannot exceed 250 characters'],
+    },
+    emergencyContact: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: [100, 'Emergency contact cannot exceed 100 characters'],
+    },
     isVerified: {
       type: Boolean,
       default: false,

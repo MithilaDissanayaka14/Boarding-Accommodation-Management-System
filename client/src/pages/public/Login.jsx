@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LogIn, Sparkles, AlertCircle, Home } from 'lucide-react';
+import { LogIn, AlertCircle, Home } from 'lucide-react';
 
 export const Login = () => {
   const navigate = useNavigate();
@@ -30,11 +30,6 @@ export const Login = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickDemo = (demoEmail, demoPassword) => {
-    setEmail(demoEmail);
-    setPassword(demoPassword);
   };
 
   return (
@@ -136,39 +131,6 @@ export const Login = () => {
             {loading ? 'Authenticating...' : 'Sign In'}
           </button>
         </form>
-
-        {/* Demo Credentials Helper */}
-        <div
-          style={{
-            marginTop: '1.75rem',
-            padding: '1rem',
-            backgroundColor: 'var(--bg-subtle)',
-            borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--border-hairline)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 700, marginBottom: '0.5rem' }}>
-            <Sparkles size={13} /> Quick Test Credentials:
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              style={{ flex: 1, fontSize: '0.75rem', padding: '0.35rem 0.5rem', fontWeight: 600 }}
-              onClick={() => handleQuickDemo('kamal@sliit.lk', 'password123')}
-            >
-              Student (Kamal)
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              style={{ flex: 1, fontSize: '0.75rem', padding: '0.35rem 0.5rem', fontWeight: 600 }}
-              onClick={() => handleQuickDemo('nimal@landlord.lk', 'password123')}
-            >
-              Landlord (Nimal)
-            </button>
-          </div>
-        </div>
 
         <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '1.5rem' }}>
           Don't have an account yet?{' '}

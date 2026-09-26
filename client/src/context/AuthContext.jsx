@@ -52,6 +52,12 @@ export const AuthProvider = ({ children }) => {
     return res;
   };
 
+  const uploadAvatar = async (formData) => {
+    const res = await authService.uploadAvatar(formData);
+    setUser(res.data.user);
+    return res;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -65,6 +71,7 @@ export const AuthProvider = ({ children }) => {
         register,
         logout,
         updateProfile,
+        uploadAvatar,
       }}
     >
       {children}

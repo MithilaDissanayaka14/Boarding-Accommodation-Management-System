@@ -25,4 +25,18 @@ export const authService = {
     const response = await api.patch('/auth/profile', profileData);
     return response.data;
   },
+
+  updatePassword: async (passwordData) => {
+    const response = await api.patch('/auth/update-password', passwordData);
+    return response.data;
+  },
+
+  uploadAvatar: async (formData) => {
+    const response = await api.patch('/auth/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
 };

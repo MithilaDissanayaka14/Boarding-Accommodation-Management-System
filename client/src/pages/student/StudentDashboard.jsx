@@ -19,6 +19,7 @@ import {
   MapPin,
   ExternalLink,
   Plus,
+  User,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -171,9 +172,19 @@ export const StudentDashboard = () => {
           </div>
         </div>
 
-        <Link to="/listings" className="btn btn-secondary btn-sm" style={{ fontWeight: 600 }}>
-          Explore More Places
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <Link
+            to="/profile"
+            className="btn btn-secondary btn-sm"
+            style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+          >
+            <User size={15} />
+            Edit Profile
+          </Link>
+          <Link to="/listings" className="btn btn-primary btn-sm" style={{ fontWeight: 600 }}>
+            Explore Places
+          </Link>
+        </div>
       </div>
 
       {/* Segmented Navigation Tabs */}
