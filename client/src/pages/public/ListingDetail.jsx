@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listingService } from '../../services/listingService';
@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   Sparkles,
   ChevronRight,
+  ChevronLeft,
   UserCheck,
   Share2,
   Heart,
@@ -26,7 +27,17 @@ import {
   ExternalLink,
   Copy,
   CheckCheck,
+  X,
+  Images,
+  ZoomIn,
 } from 'lucide-react';
+
+const DEFAULT_IMAGE =
+  'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=1200&auto=format&fit=crop&q=80';
+const SECONDARY_IMAGE_1 =
+  'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&auto=format&fit=crop&q=80';
+const SECONDARY_IMAGE_2 =
+  'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?w=800&auto=format&fit=crop&q=80';
 
 export const ListingDetail = () => {
   const { id } = useParams();
@@ -36,6 +47,19 @@ export const ListingDetail = () => {
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [copiedLocationLink, setCopiedLocationLink] = useState(false);
+
+  // Lightbox Modal State
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const openLightbox = (index = 0) => {
+    setCurrentImageIndex(index);
+    setIsLightboxOpen(true);
+  };
+
+  const closeLightbox = () => {
+    setIsLightboxOpen(false);
+  };
 
   const handleCopyMapLink = (url) => {
     if (!url) return;
@@ -100,6 +124,41 @@ export const ListingDetail = () => {
     },
   });
 
+  // Safe reference to listing & allPhotos before any conditional early returns
+  const listing = listingData?.data?.listing;
+  const hasRealImages = Boolean(listing?.images && listing.images.length > 0);
+  const allPhotos = hasRealImages
+    ? listing.images
+    : [DEFAULT_IMAGE, SECONDARY_IMAGE_1, SECONDARY_IMAGE_2];
+
+  const goToPrevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + allPhotos.length) % allPhotos.length);
+  };
+
+  const goToNextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % allPhotos.length);
+  };
+
+  // Keyboard navigation & body scroll lock for lightbox (always called at top level)
+  useEffect(() => {
+    if (!isLightboxOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'ArrowLeft') goToPrevImage();
+      if (e.key === 'ArrowRight') goToNextImage();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isLightboxOpen, allPhotos.length]);
+
   if (isLoading) {
     return (
       <div className="container" style={{ padding: '6rem 0', textAlign: 'center' }}>
@@ -110,7 +169,7 @@ export const ListingDetail = () => {
     );
   }
 
-  if (error || !listingData?.data?.listing) {
+  if (error || !listing) {
     return (
       <div className="container" style={{ padding: '6rem 0', textAlign: 'center' }}>
         <h2 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Accommodation Not Found</h2>
@@ -124,22 +183,7 @@ export const ListingDetail = () => {
     );
   }
 
-  const listing = listingData.data.listing;
   const reviews = reviewsData?.data?.reviews || [];
-  const defaultImage =
-    'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=1200&auto=format&fit=crop&q=80';
-  const secondaryImage1 =
-    'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&auto=format&fit=crop&q=80';
-  const secondaryImage2 =
-    'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?w=800&auto=format&fit=crop&q=80';
-
-  let images = listing.images && listing.images.length > 0 ? listing.images : [defaultImage];
-  // Ensure we have at least 3 display images for the TripGuide mosaic layout
-  if (images.length === 1) {
-    images = [images[0], secondaryImage1, secondaryImage2];
-  } else if (images.length === 2) {
-    images = [images[0], images[1], secondaryImage2];
-  }
 
   // Location Coordinates & Navigation URLs
   const hasCoordinates = listing.latitude != null && listing.longitude != null;
@@ -273,36 +317,39 @@ export const ListingDetail = () => {
 
       {/* 
         ========================================================================
-        PHOTO MOSAIC GALLERY (TripGuide style: Large Main Photo + Stacked Photos)
+        PHOTO MOSAIC GALLERY (Interactive TripGuide style with click-to-expand)
         ========================================================================
       */}
-      <div style={{ marginBottom: '1.75rem' }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1.85fr) minmax(0, 1fr)',
-            gap: '1rem',
-            height: '460px',
-            borderRadius: '24px',
-            overflow: 'hidden',
-          }}
-          className="trip-guide-gallery"
-        >
-          {/* Main Large Hero Image */}
+      <div style={{ marginBottom: '1.75rem', position: 'relative' }}>
+        {allPhotos.length === 1 ? (
+          /* Single Image Hero View */
           <div
+            className="trip-guide-gallery single-photo-layout"
             style={{
               position: 'relative',
-              height: '100%',
-              borderRadius: '20px',
+              height: '460px',
+              borderRadius: '24px',
               overflow: 'hidden',
+              cursor: 'pointer',
               backgroundColor: '#F1F5F9',
             }}
+            onClick={() => openLightbox(0)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && openLightbox(0)}
           >
             <img
-              src={images[0]}
+              src={allPhotos[0]}
               alt={listing.title}
+              className="gallery-zoom-img"
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
+            {/* Click to expand hover overlay hint */}
+            <div className="gallery-hover-overlay">
+              <ZoomIn size={24} />
+              <span>Click to view photo</span>
+            </div>
+
             {/* Bed Slot Free Floating Badge */}
             <div
               style={{
@@ -321,6 +368,7 @@ export const ListingDetail = () => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.45rem',
+                zIndex: 2,
               }}
             >
               <Bed size={15} strokeWidth={2.5} />
@@ -329,50 +377,282 @@ export const ListingDetail = () => {
                 : 'Occupied'}
             </div>
           </div>
+        ) : allPhotos.length === 2 ? (
+          /* Two Images Side-by-Side View */
+          <div
+            className="trip-guide-gallery two-photos-layout"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1.25fr) minmax(0, 1fr)',
+              gap: '1rem',
+              height: '460px',
+              borderRadius: '24px',
+              overflow: 'hidden',
+              position: 'relative',
+            }}
+          >
+            {/* Primary Image */}
+            <div
+              style={{
+                position: 'relative',
+                height: '100%',
+                borderRadius: '20px',
+                overflow: 'hidden',
+                backgroundColor: '#F1F5F9',
+                cursor: 'pointer',
+              }}
+              onClick={() => openLightbox(0)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && openLightbox(0)}
+            >
+              <img
+                src={allPhotos[0]}
+                alt={listing.title}
+                className="gallery-zoom-img"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+              <div className="gallery-hover-overlay">
+                <ZoomIn size={22} />
+                <span>View photo</span>
+              </div>
+              {/* Bed Slot Free Floating Badge */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  padding: '0.45rem 1rem',
+                  borderRadius: 'var(--radius-full)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.12)',
+                  border: '1px solid rgba(226, 232, 240, 0.9)',
+                  color: listing.availableBeds > 0 ? 'var(--primary)' : 'var(--status-danger-text)',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  zIndex: 2,
+                }}
+              >
+                <Bed size={15} strokeWidth={2.5} />
+                {listing.availableBeds > 0
+                  ? `${listing.availableBeds} of ${listing.totalBeds} Bed Slots Free`
+                  : 'Occupied'}
+              </div>
+            </div>
 
-          {/* Right Stacked Secondary Photos */}
+            {/* Secondary Image */}
+            <div
+              style={{
+                position: 'relative',
+                height: '100%',
+                borderRadius: '20px',
+                overflow: 'hidden',
+                backgroundColor: '#F1F5F9',
+                cursor: 'pointer',
+              }}
+              onClick={() => openLightbox(1)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && openLightbox(1)}
+            >
+              <img
+                src={allPhotos[1]}
+                alt={`${listing.title} 2`}
+                className="gallery-zoom-img"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+              <div className="gallery-hover-overlay">
+                <ZoomIn size={22} />
+                <span>View photo</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* 3+ Images TripGuide Mosaic */
           <div
             style={{
               display: 'grid',
-              gridTemplateRows: '1fr 1fr',
+              gridTemplateColumns: 'minmax(0, 1.85fr) minmax(0, 1fr)',
               gap: '1rem',
-              height: '100%',
+              height: '460px',
+              borderRadius: '24px',
+              overflow: 'hidden',
+              position: 'relative',
             }}
-            className="secondary-photos-column"
+            className="trip-guide-gallery"
           >
-            <div style={{ borderRadius: '20px', overflow: 'hidden', backgroundColor: '#F1F5F9' }}>
+            {/* Main Large Hero Image */}
+            <div
+              style={{
+                position: 'relative',
+                height: '100%',
+                borderRadius: '20px',
+                overflow: 'hidden',
+                backgroundColor: '#F1F5F9',
+                cursor: 'pointer',
+              }}
+              onClick={() => openLightbox(0)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && openLightbox(0)}
+            >
               <img
-                src={images[1]}
-                alt={`${listing.title} interior`}
+                src={allPhotos[0]}
+                alt={listing.title}
+                className="gallery-zoom-img"
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
+              <div className="gallery-hover-overlay">
+                <ZoomIn size={24} />
+                <span>View photo</span>
+              </div>
+              {/* Bed Slot Free Floating Badge */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  padding: '0.45rem 1rem',
+                  borderRadius: 'var(--radius-full)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                  backdropFilter: 'blur(8px)',
+                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.12)',
+                  border: '1px solid rgba(226, 232, 240, 0.9)',
+                  color: listing.availableBeds > 0 ? 'var(--primary)' : 'var(--status-danger-text)',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  zIndex: 2,
+                }}
+              >
+                <Bed size={15} strokeWidth={2.5} />
+                {listing.availableBeds > 0
+                  ? `${listing.availableBeds} of ${listing.totalBeds} Bed Slots Free`
+                  : 'Occupied'}
+              </div>
             </div>
-            <div style={{ borderRadius: '20px', overflow: 'hidden', backgroundColor: '#F1F5F9', position: 'relative' }}>
-              <img
-                src={images[2]}
-                alt={`${listing.title} room`}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-              {images.length > 3 && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    backgroundColor: 'rgba(15, 23, 42, 0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#FFFFFF',
-                    fontWeight: 700,
-                    fontSize: '1.1rem',
-                  }}
-                >
-                  +{images.length - 2} more photos
+
+            {/* Right Stacked Secondary Photos */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateRows: '1fr 1fr',
+                gap: '1rem',
+                height: '100%',
+              }}
+              className="secondary-photos-column"
+            >
+              <div
+                style={{
+                  position: 'relative',
+                  borderRadius: '20px',
+                  overflow: 'hidden',
+                  backgroundColor: '#F1F5F9',
+                  cursor: 'pointer',
+                }}
+                onClick={() => openLightbox(1)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && openLightbox(1)}
+              >
+                <img
+                  src={allPhotos[1]}
+                  alt={`${listing.title} interior`}
+                  className="gallery-zoom-img"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+                <div className="gallery-hover-overlay">
+                  <ZoomIn size={20} />
+                  <span>View photo</span>
                 </div>
-              )}
+              </div>
+
+              <div
+                style={{
+                  borderRadius: '20px',
+                  overflow: 'hidden',
+                  backgroundColor: '#F1F5F9',
+                  position: 'relative',
+                  cursor: 'pointer',
+                }}
+                onClick={() => openLightbox(2)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && openLightbox(2)}
+              >
+                <img
+                  src={allPhotos[2]}
+                  alt={`${listing.title} room`}
+                  className="gallery-zoom-img"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+                {allPhotos.length > 3 ? (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      backgroundColor: 'rgba(15, 23, 42, 0.6)',
+                      backdropFilter: 'blur(2px)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#FFFFFF',
+                      fontWeight: 700,
+                      fontSize: '1.1rem',
+                      gap: '0.4rem',
+                      transition: 'background-color 0.2s ease',
+                    }}
+                  >
+                    <Images size={24} />
+                    <span>+{allPhotos.length - 2} more photos</span>
+                  </div>
+                ) : (
+                  <div className="gallery-hover-overlay">
+                    <ZoomIn size={20} />
+                    <span>View photo</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Floating "View all photos" button */}
+        <button
+          type="button"
+          onClick={() => openLightbox(0)}
+          className="btn-view-all-photos"
+          style={{
+            position: 'absolute',
+            bottom: '16px',
+            right: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.55rem 1.05rem',
+            borderRadius: 'var(--radius-full)',
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            color: 'var(--text-primary)',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            border: '1px solid rgba(226, 232, 240, 0.9)',
+            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.14)',
+            cursor: 'pointer',
+            backdropFilter: 'blur(8px)',
+            zIndex: 4,
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <Images size={16} strokeWidth={2.2} />
+          <span>View all {allPhotos.length} photos</span>
+        </button>
       </div>
 
       {/* 
@@ -1309,8 +1589,322 @@ export const ListingDetail = () => {
         )}
       </Modal>
 
-      {/* Responsive Layout Styles */}
+      {/* 
+        ========================================================================
+        PHOTO LIGHTBOX POPUP MODAL (Browse all photos in full view)
+        ========================================================================
+      */}
+      {isLightboxOpen && (
+        <div
+          className="lightbox-backdrop"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            backgroundColor: 'rgba(10, 15, 29, 0.96)',
+            backdropFilter: 'blur(16px)',
+            display: 'flex',
+            flexDirection: 'column',
+            color: '#FFFFFF',
+            animation: 'fadeInLightbox 0.2s ease',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeLightbox();
+          }}
+        >
+          {/* Header Bar */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '1rem 1.75rem',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+              <span
+                style={{
+                  backgroundColor: 'var(--primary)',
+                  color: '#FFFFFF',
+                  padding: '0.3rem 0.8rem',
+                  borderRadius: 'var(--radius-full)',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  letterSpacing: '0.02em',
+                }}
+              >
+                {currentImageIndex + 1} / {allPhotos.length}
+              </span>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#F8FAFC' }}>
+                  {listing.title}
+                </span>
+                <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.6)' }}>
+                  {listing.city} • {listing.nearestUniversity}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <span
+                style={{
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  fontSize: '0.8rem',
+                }}
+                className="lightbox-desktop-hint"
+              >
+                Navigate with <kbd style={{ background: 'rgba(255,255,255,0.15)', padding: '2px 6px', borderRadius: '4px' }}>←</kbd> <kbd style={{ background: 'rgba(255,255,255,0.15)', padding: '2px 6px', borderRadius: '4px' }}>→</kbd> or <kbd style={{ background: 'rgba(255,255,255,0.15)', padding: '2px 6px', borderRadius: '4px' }}>Esc</kbd>
+              </span>
+              <button
+                type="button"
+                onClick={closeLightbox}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  color: '#FFFFFF',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                title="Close (Esc)"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.25)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.12)';
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* Main Viewing Stage */}
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              padding: '1rem 4rem',
+              overflow: 'hidden',
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) closeLightbox();
+            }}
+          >
+            {/* Prev Arrow */}
+            {allPhotos.length > 1 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToPrevImage();
+                }}
+                style={{
+                  position: 'absolute',
+                  left: '1.5rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '52px',
+                  height: '52px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(255, 255, 255, 0.14)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  zIndex: 10,
+                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.45)',
+                  transition: 'all 0.2s ease',
+                }}
+                title="Previous Photo (←)"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+                  e.currentTarget.style.transform = 'translateY(-50%) scale(1.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.14)';
+                  e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+                }}
+              >
+                <ChevronLeft size={28} strokeWidth={2.5} />
+              </button>
+            )}
+
+            {/* Active Photo Container */}
+            <div
+              style={{
+                position: 'relative',
+                maxWidth: '100%',
+                maxHeight: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <img
+                key={currentImageIndex}
+                src={allPhotos[currentImageIndex]}
+                alt={`${listing.title} photo ${currentImageIndex + 1}`}
+                style={{
+                  maxHeight: '72vh',
+                  maxWidth: '85vw',
+                  objectFit: 'contain',
+                  borderRadius: '16px',
+                  boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.85)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  animation: 'zoomInLightbox 0.22s ease-out',
+                }}
+              />
+            </div>
+
+            {/* Next Arrow */}
+            {allPhotos.length > 1 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToNextImage();
+                }}
+                style={{
+                  position: 'absolute',
+                  right: '1.5rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '52px',
+                  height: '52px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(255, 255, 255, 0.14)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  zIndex: 10,
+                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.45)',
+                  transition: 'all 0.2s ease',
+                }}
+                title="Next Photo (→)"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+                  e.currentTarget.style.transform = 'translateY(-50%) scale(1.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.14)';
+                  e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+                }}
+              >
+                <ChevronRight size={28} strokeWidth={2.5} />
+              </button>
+            )}
+          </div>
+
+          {/* Bottom Thumbnail Strip */}
+          {allPhotos.length > 1 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.65rem',
+                padding: '0.85rem 1.5rem',
+                backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                overflowX: 'auto',
+                maxWidth: '100%',
+              }}
+            >
+              {allPhotos.map((photo, idx) => {
+                const isActive = idx === currentImageIndex;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setCurrentImageIndex(idx)}
+                    style={{
+                      width: '68px',
+                      height: '48px',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      padding: 0,
+                      border: isActive ? '2px solid var(--primary)' : '2px solid transparent',
+                      opacity: isActive ? 1 : 0.5,
+                      transform: isActive ? 'scale(1.08)' : 'scale(1)',
+                      boxShadow: isActive ? '0 0 14px rgba(59, 113, 254, 0.8)' : 'none',
+                      cursor: 'pointer',
+                      backgroundColor: 'transparent',
+                      transition: 'all 0.15s ease',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <img
+                      src={photo}
+                      alt={`Thumbnail ${idx + 1}`}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Responsive Layout & Lightbox Styles */}
       <style>{`
+        .gallery-zoom-img {
+          transition: transform 0.35s ease;
+        }
+        .trip-guide-gallery div:hover .gallery-zoom-img,
+        .trip-guide-gallery:hover .gallery-zoom-img {
+          transform: scale(1.03);
+        }
+        .gallery-hover-overlay {
+          position: absolute;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.35);
+          backdrop-filter: blur(1px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.4rem;
+          color: #FFFFFF;
+          font-weight: 700;
+          font-size: 0.9rem;
+          opacity: 0;
+          transition: opacity 0.2s ease;
+          pointer-events: none;
+        }
+        .trip-guide-gallery div:hover .gallery-hover-overlay {
+          opacity: 1;
+        }
+        .btn-view-all-photos:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22) !important;
+          background-color: #FFFFFF !important;
+        }
+        @keyframes fadeInLightbox {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes zoomInLightbox {
+          from { opacity: 0; transform: scale(0.96); }
+          to { opacity: 1; transform: scale(1); }
+        }
         @media (max-width: 900px) {
           .trip-guide-gallery {
             grid-template-columns: 1fr !important;
@@ -1321,6 +1915,9 @@ export const ListingDetail = () => {
           }
           .details-layout {
             grid-template-columns: 1fr !important;
+          }
+          .lightbox-desktop-hint {
+            display: none !important;
           }
         }
       `}</style>

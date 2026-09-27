@@ -9,6 +9,11 @@ const {
   loginSchema,
   updateProfileSchema,
   updatePasswordSchema,
+  sendVerificationOtpSchema,
+  verifyEmailOtpSchema,
+  forgotPasswordOtpSchema,
+  verifyResetOtpSchema,
+  resetPasswordOtpSchema,
 } = require('../validations/authValidation');
 
 router.post('/register', validate({ body: registerSchema }), authController.register);
@@ -19,5 +24,14 @@ router.get('/me', protect, authController.getMe);
 router.patch('/profile', protect, validate({ body: updateProfileSchema }), authController.updateProfile);
 router.patch('/avatar', protect, uploadImages.single('avatar'), authController.uploadAvatar);
 router.patch('/update-password', protect, validate({ body: updatePasswordSchema }), authController.updatePassword);
+
+// OTP Email Verification
+router.post('/send-verification-otp', validate({ body: sendVerificationOtpSchema }), authController.sendVerificationOtp);
+router.post('/verify-email-otp', validate({ body: verifyEmailOtpSchema }), authController.verifyEmailOtp);
+
+// OTP Forgot & Reset Password
+router.post('/forgot-password-otp', validate({ body: forgotPasswordOtpSchema }), authController.forgotPasswordOtp);
+router.post('/verify-reset-otp', validate({ body: verifyResetOtpSchema }), authController.verifyResetOtp);
+router.post('/reset-password-otp', validate({ body: resetPasswordOtpSchema }), authController.resetPasswordOtp);
 
 module.exports = router;

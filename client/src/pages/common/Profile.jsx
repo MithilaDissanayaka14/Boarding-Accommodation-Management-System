@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { authService } from '../../services/authService';
+import { Modal } from '../../components/common/Modal';
 import {
   User,
   Mail,
@@ -24,6 +25,7 @@ import {
   UploadCloud,
   Trash2,
   ImageIcon,
+  RefreshCw,
 } from 'lucide-react';
 
 const UNIVERSITIES = [
@@ -38,7 +40,7 @@ const UNIVERSITIES = [
 ];
 
 export const Profile = () => {
-  const { user, updateProfile, uploadAvatar, isStudent, isLandlord, logout } = useAuth();
+  const { user, updateProfile, uploadAvatar, refreshUser, isStudent, isLandlord, logout } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -71,6 +73,100 @@ export const Profile = () => {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [passwordError, setPasswordError] = useState('');
+
+  // Email Verification Modal State
+  const [verifyModalOpen, setVerifyModalOpen] = useState(false);
+  const [verifyOtp, setVerifyOtp] = useState(['', '', '', '', '', '']);
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifySending, setVerifySending] = useState(false);
+  const [verifyError, setVerifyError] = useState('');
+  const [verifySuccess, setVerifySuccess] = useState(false);
+  const [verifyCountdown, setVerifyCountdown] = useState(0);
+
+  useEffect(() => {
+    let timer;
+    if (verifyCountdown > 0) {
+      timer = setTimeout(() => setVerifyCountdown(verifyCountdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [verifyCountdown]);
+
+  const handleOpenVerifyModal = () => {
+    setVerifyModalOpen(true);
+    setVerifyError('');
+    setVerifySuccess(false);
+    setVerifyOtp(['', '', '', '', '', '']);
+    if (verifyCountdown === 0) {
+      handleSendVerifyOtp();
+    }
+  };
+
+  const handleSendVerifyOtp = async () => {
+    setVerifySending(true);
+    setVerifyError('');
+    try {
+      await authService.sendVerificationOtp(user.email);
+      setVerifyCountdown(60);
+    } catch (err) {
+      setVerifyError(err.response?.data?.message || 'Failed to send OTP code.');
+    } finally {
+      setVerifySending(false);
+    }
+  };
+
+  const handleVerifyOtpChange = (index, value) => {
+    if (!/^\d*$/.test(value)) return;
+    const newOtp = [...verifyOtp];
+    newOtp[index] = value.slice(-1);
+    setVerifyOtp(newOtp);
+
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`profile-verify-otp-${index + 1}`);
+      if (nextInput) nextInput.focus();
+    }
+  };
+
+  const handleVerifyOtpPaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').trim();
+    if (/^\d{6}$/.test(pastedData)) {
+      setVerifyOtp(pastedData.split(''));
+      const lastInput = document.getElementById('profile-verify-otp-5');
+      if (lastInput) lastInput.focus();
+    }
+  };
+
+  const handleVerifyOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !verifyOtp[index] && index > 0) {
+      const prevInput = document.getElementById(`profile-verify-otp-${index - 1}`);
+      if (prevInput) prevInput.focus();
+    }
+  };
+
+  const handleConfirmVerifyEmail = async (e) => {
+    e.preventDefault();
+    const code = verifyOtp.join('');
+    if (code.length !== 6) {
+      setVerifyError('Please enter the full 6-digit verification code.');
+      return;
+    }
+
+    setVerifyLoading(true);
+    setVerifyError('');
+    try {
+      await authService.verifyEmailOtp({ email: user.email, otp: code });
+      setVerifySuccess(true);
+      if (refreshUser) await refreshUser();
+      setTimeout(() => {
+        setVerifyModalOpen(false);
+        setVerifySuccess(false);
+      }, 2000);
+    } catch (err) {
+      setVerifyError(err.response?.data?.message || 'Invalid or expired OTP code.');
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
 
   // Synchronize state when user object loads/changes
   useEffect(() => {
@@ -424,9 +520,53 @@ export const Profile = () => {
                   flexWrap: 'wrap',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <Mail size={14} color="var(--primary)" />
-                  <span>{user.email}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <Mail size={14} color="var(--primary)" />
+                    <span>{user.email}</span>
+                  </div>
+                  {user.isVerified ? (
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        backgroundColor: '#E8F7EE',
+                        color: '#059669',
+                        padding: '0.15rem 0.6rem',
+                        borderRadius: 'var(--radius-full)',
+                        fontSize: '0.725rem',
+                        fontWeight: 700,
+                      }}
+                      title="Email is verified"
+                    >
+                      <CheckCircle2 size={12} strokeWidth={2.5} />
+                      Verified
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleOpenVerifyModal}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                        backgroundColor: '#FFF8E6',
+                        color: '#B45309',
+                        border: '1px solid #FDE68A',
+                        padding: '0.15rem 0.6rem',
+                        borderRadius: 'var(--radius-full)',
+                        fontSize: '0.725rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      title="Verify your email with a 6-digit OTP code"
+                    >
+                      <AlertCircle size={12} strokeWidth={2.5} />
+                      Verify Email (OTP)
+                    </button>
+                  )}
                 </div>
                 {user.university && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -1250,6 +1390,162 @@ export const Profile = () => {
           </button>
         </div>
       </div>
+
+      {/* Email Verification OTP Modal */}
+      <Modal
+        isOpen={verifyModalOpen}
+        onClose={() => setVerifyModalOpen(false)}
+        title="Verify Email Address"
+        maxWidth="480px"
+      >
+        {verifySuccess ? (
+          <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+            <div
+              style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: '50%',
+                backgroundColor: 'var(--status-success-bg)',
+                color: 'var(--status-success-text)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1.25rem',
+              }}
+            >
+              <CheckCircle2 size={32} strokeWidth={2.5} />
+            </div>
+            <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+              Email Verified Successfully!
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              Your account email <strong>{user.email}</strong> is now verified.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleConfirmVerifyEmail}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+              We sent a 6-digit verification code to <strong>{user.email}</strong>. Enter the OTP code below to verify your email.
+            </p>
+
+            {verifyError && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  color: 'var(--status-danger-text)',
+                  backgroundColor: 'var(--status-danger-bg)',
+                  border: '1px solid var(--status-danger-border)',
+                  padding: '0.75rem 1rem',
+                  borderRadius: 'var(--radius-md)',
+                  marginBottom: '1.25rem',
+                  fontSize: '0.85rem',
+                }}
+              >
+                <AlertCircle size={16} />
+                <span>{verifyError}</span>
+              </div>
+            )}
+
+            {/* 6 Digit Input Boxes */}
+            <div className="form-group" style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '0.5rem',
+                  justifyContent: 'center',
+                }}
+                onPaste={handleVerifyOtpPaste}
+              >
+                {verifyOtp.map((digit, idx) => (
+                  <input
+                    key={idx}
+                    id={`profile-verify-otp-${idx}`}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleVerifyOtpChange(idx, e.target.value)}
+                    onKeyDown={(e) => handleVerifyOtpKeyDown(idx, e)}
+                    style={{
+                      width: '46px',
+                      height: '52px',
+                      fontSize: '1.35rem',
+                      fontWeight: 800,
+                      textAlign: 'center',
+                      borderRadius: 'var(--radius-md)',
+                      border: digit ? '2px solid var(--primary)' : '1px solid var(--border-hairline)',
+                      backgroundColor: digit ? 'var(--primary-subtle)' : '#FAFCFF',
+                      color: 'var(--text-primary)',
+                      outline: 'none',
+                      transition: 'all 0.15s ease',
+                    }}
+                    autoFocus={idx === 0}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Resend Option */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '0.825rem',
+                marginBottom: '1.5rem',
+                padding: '0.6rem 0.85rem',
+                backgroundColor: 'var(--bg-subtle)',
+                borderRadius: 'var(--radius-md)',
+              }}
+            >
+              <span style={{ color: 'var(--text-muted)' }}>Didn't receive the email?</span>
+              {verifyCountdown > 0 ? (
+                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Resend in {verifyCountdown}s</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSendVerifyOtp}
+                  disabled={verifySending}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--primary)',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                  }}
+                >
+                  <RefreshCw size={13} />
+                  {verifySending ? 'Sending...' : 'Resend Code'}
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setVerifyModalOpen(false)}
+                disabled={verifyLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={verifyLoading}
+                style={{ fontWeight: 700 }}
+              >
+                {verifyLoading ? 'Verifying...' : 'Confirm Verification'}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 };

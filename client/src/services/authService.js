@@ -39,4 +39,29 @@ export const authService = {
     });
     return response.data;
   },
+
+  sendVerificationOtp: async (email) => {
+    const response = await api.post('/auth/send-verification-otp', email ? { email } : {});
+    return response.data;
+  },
+
+  verifyEmailOtp: async ({ otp, email }) => {
+    const response = await api.post('/auth/verify-email-otp', { otp, email });
+    return response.data;
+  },
+
+  forgotPasswordOtp: async (email) => {
+    const response = await api.post('/auth/forgot-password-otp', { email });
+    return response.data;
+  },
+
+  verifyResetOtp: async ({ email, otp }) => {
+    const response = await api.post('/auth/verify-reset-otp', { email, otp });
+    return response.data;
+  },
+
+  resetPasswordOtp: async ({ email, otp, newPassword }) => {
+    const response = await api.post('/auth/reset-password-otp', { email, otp, newPassword });
+    return response.data;
+  },
 };

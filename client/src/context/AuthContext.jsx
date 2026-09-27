@@ -58,6 +58,17 @@ export const AuthProvider = ({ children }) => {
     return res;
   };
 
+  const refreshUser = async () => {
+    try {
+      const data = await authService.getMe();
+      if (data && data.data && data.data.user) {
+        setUser(data.data.user);
+      }
+    } catch (err) {
+      // ignore
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -72,6 +83,7 @@ export const AuthProvider = ({ children }) => {
         logout,
         updateProfile,
         uploadAvatar,
+        refreshUser,
       }}
     >
       {children}

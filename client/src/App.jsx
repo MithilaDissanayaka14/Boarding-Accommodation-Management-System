@@ -18,6 +18,12 @@ const Login = lazy(() => import('./pages/public/Login').then((m) => ({ default: 
 const Register = lazy(() =>
   import('./pages/public/Register').then((m) => ({ default: m.Register }))
 );
+const ForgotPassword = lazy(() =>
+  import('./pages/public/ForgotPassword').then((m) => ({ default: m.ForgotPassword }))
+);
+const VerifyEmail = lazy(() =>
+  import('./pages/public/VerifyEmail').then((m) => ({ default: m.VerifyEmail }))
+);
 const StudentDashboard = lazy(() =>
   import('./pages/student/StudentDashboard').then((m) => ({ default: m.StudentDashboard }))
 );
@@ -96,6 +102,8 @@ export function App() {
                   <Route path="/listings/:id" element={<ListingDetail />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/register" element={<Register />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/verify-email" element={<VerifyEmail />} />
 
                   {/* Student Protected Portal */}
                   <Route

@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const User = require('../models/User');
 const AppError = require('../utils/AppError');
 const asyncHandler = require('../utils/asyncHandler');
@@ -9,6 +10,10 @@ const {
   clearAuthCookies,
 } = require('../utils/tokens');
 const { processUploadedFile } = require('../middlewares/uploadMiddleware');
+const {
+  sendVerificationOtpEmail,
+  sendPasswordResetOtpEmail,
+} = require('../utils/emailService');
 
 /**
  * Register a new student or landlord
@@ -33,6 +38,12 @@ const register = asyncHandler(async (req, res, next) => {
     university: university || '',
   });
 
+  // Generate initial Email Verification OTP
+  const verificationOtp = Math.floor(100000 + Math.random() * 900000).toString();
+  const hashedOtp = crypto.createHash('sha256').update(verificationOtp).digest('hex');
+  user.emailVerificationOTP = hashedOtp;
+  user.emailVerificationOTPExpires = Date.now() + 10 * 60 * 1000;
+
   // Issue Access and Refresh Tokens
   const accessToken = signAccessToken(user._id, user.role);
   const refreshToken = signRefreshToken(user._id);
@@ -41,12 +52,15 @@ const register = asyncHandler(async (req, res, next) => {
   user.refreshToken = refreshToken;
   await user.save({ validateBeforeSave: false });
 
+  // Send verification OTP asynchronously
+  sendVerificationOtpEmail({ to: user.email, name: user.name, otp: verificationOtp }).catch(() => {});
+
   // Set httpOnly cookies
   setAuthCookies(res, accessToken, refreshToken);
 
   res.status(201).json({
     status: 'success',
-    message: 'Account registered successfully',
+    message: 'Account registered successfully. A verification code has been sent to your email.',
     data: {
       user: {
         id: user._id,
@@ -59,6 +73,7 @@ const register = asyncHandler(async (req, res, next) => {
         isVerified: user.isVerified,
       },
       accessToken,
+      ...(process.env.NODE_ENV === 'development' ? { devOtp: verificationOtp } : {}),
     },
   });
 });
@@ -297,6 +312,239 @@ const uploadAvatar = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * Send / Resend Email Verification OTP
+ * POST /api/v1/auth/send-verification-otp
+ */
+const sendVerificationOtp = asyncHandler(async (req, res, next) => {
+  const email = (req.body && req.body.email) || (req.user && req.user.email);
+  if (!email) {
+    return next(new AppError('Please provide an email address', 400));
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    return next(new AppError('User with this email not found', 404));
+  }
+
+  if (user.isVerified) {
+    return res.status(200).json({
+      status: 'success',
+      message: 'Account email is already verified',
+      data: { isVerified: true },
+    });
+  }
+
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+
+  user.emailVerificationOTP = hashedOtp;
+  user.emailVerificationOTPExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+  await user.save({ validateBeforeSave: false });
+
+  await sendVerificationOtpEmail({ to: user.email, name: user.name, otp });
+
+  res.status(200).json({
+    status: 'success',
+    message: `Verification code sent to ${user.email}`,
+    ...(process.env.NODE_ENV === 'development' ? { devOtp: otp } : {}),
+  });
+});
+
+/**
+ * Verify Email with OTP
+ * POST /api/v1/auth/verify-email-otp
+ */
+const verifyEmailOtp = asyncHandler(async (req, res, next) => {
+  const { otp } = req.body;
+  const email = (req.body && req.body.email) || (req.user && req.user.email);
+
+  if (!email) {
+    return next(new AppError('Please provide an email address', 400));
+  }
+  if (!otp) {
+    return next(new AppError('Please provide the 6-digit OTP code', 400));
+  }
+
+  const user = await User.findOne({ email }).select(
+    '+emailVerificationOTP +emailVerificationOTPExpires'
+  );
+
+  if (!user) {
+    return next(new AppError('User not found', 404));
+  }
+
+  if (user.isVerified) {
+    return res.status(200).json({
+      status: 'success',
+      message: 'Email is already verified',
+      data: { isVerified: true },
+    });
+  }
+
+  if (!user.emailVerificationOTP || !user.emailVerificationOTPExpires) {
+    return next(
+      new AppError('No verification code pending. Please request a new code.', 400)
+    );
+  }
+
+  if (user.emailVerificationOTPExpires < Date.now()) {
+    return next(
+      new AppError('Verification code has expired. Please request a new code.', 400)
+    );
+  }
+
+  const candidateHash = crypto.createHash('sha256').update(otp.trim()).digest('hex');
+  if (candidateHash !== user.emailVerificationOTP) {
+    return next(new AppError('Invalid verification code. Please check and try again.', 400));
+  }
+
+  user.isVerified = true;
+  user.emailVerificationOTP = undefined;
+  user.emailVerificationOTPExpires = undefined;
+  await user.save({ validateBeforeSave: false });
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Email address verified successfully!',
+    data: {
+      isVerified: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isVerified: true,
+      },
+    },
+  });
+});
+
+/**
+ * Send Password Reset OTP
+ * POST /api/v1/auth/forgot-password-otp
+ */
+const forgotPasswordOtp = asyncHandler(async (req, res, next) => {
+  const { email } = req.body;
+  if (!email) {
+    return next(new AppError('Please provide your email address', 400));
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    // Return friendly generic message for security
+    return res.status(200).json({
+      status: 'success',
+      message: 'If an account exists with this email, a 6-digit reset code has been sent.',
+    });
+  }
+
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+
+  user.passwordResetOTP = hashedOtp;
+  user.passwordResetOTPExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+  await user.save({ validateBeforeSave: false });
+
+  await sendPasswordResetOtpEmail({ to: user.email, name: user.name, otp });
+
+  res.status(200).json({
+    status: 'success',
+    message: 'If an account exists with this email, a 6-digit reset code has been sent.',
+    ...(process.env.NODE_ENV === 'development' ? { devOtp: otp } : {}),
+  });
+});
+
+/**
+ * Verify Password Reset OTP
+ * POST /api/v1/auth/verify-reset-otp
+ */
+const verifyResetOtp = asyncHandler(async (req, res, next) => {
+  const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    return next(new AppError('Email and OTP code are required', 400));
+  }
+
+  const user = await User.findOne({ email }).select(
+    '+passwordResetOTP +passwordResetOTPExpires'
+  );
+
+  if (!user) {
+    return next(new AppError('User not found with this email', 404));
+  }
+
+  if (!user.passwordResetOTP || !user.passwordResetOTPExpires) {
+    return next(new AppError('No reset code requested or it has already been used.', 400));
+  }
+
+  if (user.passwordResetOTPExpires < Date.now()) {
+    return next(new AppError('Reset code has expired. Please request a new code.', 400));
+  }
+
+  const candidateHash = crypto.createHash('sha256').update(otp.trim()).digest('hex');
+  if (candidateHash !== user.passwordResetOTP) {
+    return next(new AppError('Invalid reset code. Please check and try again.', 400));
+  }
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Reset code verified successfully. You may now enter your new password.',
+  });
+});
+
+/**
+ * Reset Password with OTP
+ * POST /api/v1/auth/reset-password-otp
+ */
+const resetPasswordOtp = asyncHandler(async (req, res, next) => {
+  const { email, otp, newPassword } = req.body;
+
+  if (!email || !otp || !newPassword) {
+    return next(new AppError('Email, OTP code, and new password are required', 400));
+  }
+
+  if (newPassword.length < 6) {
+    return next(new AppError('New password must be at least 6 characters long', 400));
+  }
+
+  const user = await User.findOne({ email }).select(
+    '+password +passwordResetOTP +passwordResetOTPExpires'
+  );
+
+  if (!user) {
+    return next(new AppError('User not found with this email', 404));
+  }
+
+  if (!user.passwordResetOTP || !user.passwordResetOTPExpires) {
+    return next(new AppError('No reset code requested or it has already been used.', 400));
+  }
+
+  if (user.passwordResetOTPExpires < Date.now()) {
+    return next(new AppError('Reset code has expired. Please request a new code.', 400));
+  }
+
+  const candidateHash = crypto.createHash('sha256').update(otp.trim()).digest('hex');
+  if (candidateHash !== user.passwordResetOTP) {
+    return next(new AppError('Invalid reset code. Please check and try again.', 400));
+  }
+
+  // Update password and invalidate reset OTP & refresh tokens
+  user.password = newPassword;
+  user.passwordChangedAt = Date.now();
+  user.passwordResetOTP = undefined;
+  user.passwordResetOTPExpires = undefined;
+  user.refreshToken = undefined;
+  await user.save();
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Password reset successfully! You can now sign in with your new password.',
+  });
+});
+
 module.exports = {
   register,
   login,
@@ -306,4 +554,9 @@ module.exports = {
   updateProfile,
   updatePassword,
   uploadAvatar,
+  sendVerificationOtp,
+  verifyEmailOtp,
+  forgotPasswordOtp,
+  verifyResetOtp,
+  resetPasswordOtp,
 };

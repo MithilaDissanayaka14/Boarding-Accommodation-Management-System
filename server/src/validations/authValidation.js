@@ -30,9 +30,38 @@ const updatePasswordSchema = z.object({
   newPassword: z.string().min(6, 'New password must be at least 6 characters long'),
 });
 
+const sendVerificationOtpSchema = z.object({
+  email: z.string().email('Please enter a valid email address').optional(),
+});
+
+const verifyEmailOtpSchema = z.object({
+  otp: z.string().length(6, 'OTP must be 6 digits'),
+  email: z.string().email('Please enter a valid email address').optional(),
+});
+
+const forgotPasswordOtpSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+});
+
+const verifyResetOtpSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  otp: z.string().length(6, 'OTP must be 6 digits'),
+});
+
+const resetPasswordOtpSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  otp: z.string().length(6, 'OTP must be 6 digits'),
+  newPassword: z.string().min(6, 'New password must be at least 6 characters long'),
+});
+
 module.exports = {
   registerSchema,
   loginSchema,
   updateProfileSchema,
   updatePasswordSchema,
+  sendVerificationOtpSchema,
+  verifyEmailOtpSchema,
+  forgotPasswordOtpSchema,
+  verifyResetOtpSchema,
+  resetPasswordOtpSchema,
 };

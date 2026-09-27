@@ -22,7 +22,7 @@ export const Register = () => {
     setLoading(true);
 
     try {
-      const res = await register({
+      await register({
         name,
         email,
         password,
@@ -31,11 +31,8 @@ export const Register = () => {
         university: role === 'student' ? university : undefined,
       });
 
-      if (role === 'landlord') {
-        navigate('/landlord/dashboard');
-      } else {
-        navigate('/student/dashboard');
-      }
+      // Redirect immediately to OTP email verification
+      navigate(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed. Please check your details.');
     } finally {
